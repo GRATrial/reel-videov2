@@ -1,0 +1,26 @@
+{
+  "name": "reel-video-study",
+  "version": "1.0.0",
+  "description": "Reel Video Study with MongoDB Tracking - Vercel Deployment",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step required'"
+  },
+  "keywords": [
+    "mongodb",
+    "tracking",
+    "analytics",
+    "instagram-study",
+    "vercel"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mongodb": "^6.3.0"
+  },
+  "devDependencies": {
+    "@vercel/node": "^3.0.0"
+  }
+}
+

@@ -431,3 +431,373 @@
     }
     
 })();
+     * Setup page unload tracking to report final results
+     */
+    function setupUnloadTracking() {
+        // Handle page unload - report total watch time
+        const reportFinalResults = () => {
+            if (!sessionState.isTrackingEnabled || !sessionState.hasStartedOnce || sessionState.hasReportedFinalResults) {
+                if (sessionState.hasReportedFinalResults) {
+                    console.log('Final results already reported, skipping duplicate');
+                } else {
+                    console.log('No video interaction to report');
+                }
+            return;
+            }
+            
+            // Mark as reported to prevent duplicates
+            sessionState.hasReportedFinalResults = true;
+            
+            // Add any current play time
+            if (sessionState.currentPlayStartTime !== null && sessionState.player) {
+                const currentTime = sessionState.player.getCurrentTime();
+                const watchedDuration = currentTime - sessionState.currentPlayStartTime;
+                if (watchedDuration > 0) {
+                    sessionState.totalWatchTimeSeconds += watchedDuration;
+                }
+            }
+            
+            const totalMinutes = sessionState.totalWatchTimeSeconds / 60;
+            const completionRate = sessionState.duration > 0 ? 
+                (sessionState.totalWatchTimeSeconds / sessionState.duration) * 100 : 0;
+            
+            console.log('=== FINAL VIDEO SESSION REPORT ===');
+            console.log(`Total watch time: ${sessionState.totalWatchTimeSeconds.toFixed(2)} seconds (${totalMinutes.toFixed(2)} minutes)`);
+            console.log(`Play count: ${sessionState.playCount}`);
+            console.log(`Completion count: ${sessionState.completionCount}`);
+            console.log(`Completion rate: ${Math.min(100, completionRate).toFixed(1)}%`);
+            console.log(`Milestones reached: ${Array.from(sessionState.milestonesReached).sort((a,b) => a-b).join(', ')}%`);
+            console.log(`Max progress reached: ${(sessionState.maxProgressReached / sessionState.duration * 100).toFixed(1)}%`);
+            console.log(`Video duration: ${sessionState.duration} seconds`);
+            
+            // Send to GA4 - comprehensive final report
+            if (window.GALite && window.GALite.track) {
+                window.GALite.track('video_session_complete', {
+                    video_id: VIDEO_ID,
+                    total_watch_time_seconds: Math.round(sessionState.totalWatchTimeSeconds),
+                    total_watch_time_minutes: Math.round(totalMinutes * 100) / 100, // Round to 2 decimals
+                    play_count: sessionState.playCount,
+                    completion_count: sessionState.completionCount,
+                    completion_rate_percent: Math.min(100, Math.round(completionRate)),
+                    milestones_reached: Array.from(sessionState.milestonesReached).sort((a,b) => a-b).join(','),
+                    milestone_25_reached: sessionState.milestonesReached.has(25),
+                    milestone_50_reached: sessionState.milestonesReached.has(50),
+                    milestone_75_reached: sessionState.milestonesReached.has(75),
+                    milestone_100_reached: sessionState.milestonesReached.has(100),
+                    max_progress_percent: Math.round((sessionState.maxProgressReached / sessionState.duration) * 100),
+                    video_duration_seconds: Math.round(sessionState.duration),
+                    session_duration_seconds: sessionState.sessionStartTime ? 
+                        Math.round((Date.now() - sessionState.sessionStartTime) / 1000) : 0,
+                    study_id: 'instagram_study'
+                });
+                
+                console.log('✅ Final video session data sent to GA4');
+            }
+        };
+        
+        // Multiple event listeners for different unload scenarios
+        window.addEventListener('beforeunload', reportFinalResults);
+        window.addEventListener('pagehide', reportFinalResults);
+        
+        // Also track when page becomes hidden (user switches tabs)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                reportFinalResults();
+            }
+        });
+    }
+    
+    /**
+     * Toggle mute functionality for the overlay
+     */
+    function toggleMute() {
+        if (!sessionState.player) return;
+        
+        if (sessionState.player.isMuted()) {
+            sessionState.player.unMute();
+            updateMuteIcon(false);
+        } else {
+            sessionState.player.mute();
+            updateMuteIcon(true);
+        }
+    }
+    
+    /**
+     * Initialize video tracking when DOM is ready
+     */
+    function initVideoTracking() {
+        console.log('Initializing session-based video tracking...');
+        
+        // Wait for GALite to be available
+        if (!window.GALite) {
+            setTimeout(initVideoTracking, 100);
+            return;
+        }
+        
+        // Load YouTube API
+        loadYouTubeAPI();
+        
+        // Set up mute toggle
+        const muteOverlay = document.querySelector('.mute-toggle-overlay');
+        if (muteOverlay) {
+            muteOverlay.style.pointerEvents = 'auto';
+            muteOverlay.style.opacity = '0.1';
+            
+            muteOverlay.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleMute();
+                
+                // Show mute icon briefly
+                muteOverlay.classList.add('visible');
+                setTimeout(() => {
+                    muteOverlay.classList.remove('visible');
+                }, 1000);
+            });
+        }
+        
+        console.log('Session-based video tracking initialized');
+    }
+    
+    // Expose toggle function for external use
+    window.VideoTracker = {
+        toggleMute: toggleMute
+    };
+    
+    // Auto-initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initVideoTracking);
+    } else {
+        initVideoTracking();
+    }
+    
+})();
+        // Track video start
+        video.addEventListener('play', () => {
+            if (!videoState.isStarted) {
+                trackVideoStart();
+                videoState.isStarted = true;
+                videoState.startTime = Date.now();
+            }
+        });
+        
+        // Track progress during playback
+        video.addEventListener('timeupdate', () => {
+            const currentTime = video.currentTime;
+            
+            // Anti-skip logic: only update maxWatched if playing forward
+            if (currentTime > videoState.maxWatched) {
+                videoState.maxWatched = currentTime;
+            }
+            
+            // Use maxWatched for progress tracking (not currentTime)
+            trackVideoProgress(videoState.maxWatched);
+        });
+        
+        // Track video completion
+        video.addEventListener('ended', () => {
+            trackVideoComplete();
+        });
+        
+        // Track pause/resume for watch time calculation
+        video.addEventListener('pause', () => {
+            if (videoState.startTime) {
+                videoState.totalWatchedMs += Date.now() - videoState.startTime;
+                videoState.startTime = null;
+            }
+        });
+        
+        video.addEventListener('play', () => {
+            if (!videoState.startTime) {
+                videoState.startTime = Date.now();
+            }
+        });
+    }
+    
+    /**
+     * Set up Vimeo iframe tracking using postMessage API
+     */
+    function setupVimeoTracking(iframe) {
+        videoState.videoType = 'vimeo';
+        
+        // Enable Vimeo API
+        const src = iframe.src;
+        if (src.indexOf('api=1') === -1) {
+            iframe.src = src + (src.indexOf('?') === -1 ? '?' : '&') + 'api=1';
+        }
+        
+        // Listen for Vimeo events
+        window.addEventListener('message', (event) => {
+            if (event.origin !== 'https://player.vimeo.com') return;
+            
+            try {
+                const data = JSON.parse(event.data);
+                handleVimeoEvent(data);
+            } catch (e) {
+                // Ignore non-JSON messages
+            }
+        });
+        
+        // Request events from Vimeo
+        iframe.addEventListener('load', () => {
+            const commands = [
+                'addEventListener',
+                'play',
+                'pause',
+                'ended',
+                'timeupdate',
+                'loaded'
+            ];
+            
+            commands.forEach(command => {
+                iframe.contentWindow.postMessage(JSON.stringify({
+                    method: command,
+                    value: command === 'addEventListener' ? 'play' : undefined
+                }), 'https://player.vimeo.com');
+            });
+        });
+    }
+    
+    /**
+     * Handle Vimeo player events
+     */
+    function handleVimeoEvent(data) {
+        switch (data.event) {
+            case 'ready':
+                // Get video duration
+                break;
+                
+            case 'play':
+                if (!videoState.isStarted) {
+                    trackVideoStart();
+                    videoState.isStarted = true;
+                    videoState.startTime = Date.now();
+                } else if (!videoState.startTime) {
+                    videoState.startTime = Date.now();
+                }
+                break;
+                
+            case 'pause':
+                if (videoState.startTime) {
+                    videoState.totalWatchedMs += Date.now() - videoState.startTime;
+                    videoState.startTime = null;
+                }
+                break;
+                
+            case 'timeupdate':
+                if (data.data) {
+                    const currentTime = data.data.seconds;
+                    const duration = data.data.duration;
+                    
+                    if (!videoState.duration && duration) {
+                        videoState.duration = duration;
+                    }
+                    
+                    // Anti-skip logic
+                    if (currentTime > videoState.maxWatched) {
+                        videoState.maxWatched = currentTime;
+                    }
+                    
+                    trackVideoProgress(videoState.maxWatched);
+                }
+                break;
+                
+            case 'ended':
+                trackVideoComplete();
+                break;
+        }
+    }
+    
+    /**
+     * Track video start event
+     */
+    function trackVideoStart() {
+        window.GALite.track('video_start', {
+            video_type: videoState.videoType,
+            duration_s: videoState.duration
+        });
+    }
+    
+    /**
+     * Track video progress at specified intervals
+     */
+    function trackVideoProgress(currentSeconds) {
+        if (!videoState.duration) return;
+        
+        PROGRESS_SECONDS.forEach(second => {
+            if (currentSeconds >= second && !videoState.progressTracked.has(second)) {
+                videoState.progressTracked.add(second);
+                
+                window.GALite.track('video_progress', {
+                    second: second,
+                    duration_s: videoState.duration,
+                    video_type: videoState.videoType
+                });
+            }
+        });
+    }
+    
+    /**
+     * Track video completion
+     */
+    function trackVideoComplete() {
+        // Calculate final watch time
+        if (videoState.startTime) {
+            videoState.totalWatchedMs += Date.now() - videoState.startTime;
+            videoState.startTime = null;
+        }
+        
+        // Calculate percent watched based on maxWatched (anti-skip)
+        const percentWatched = videoState.duration > 0 ? 
+            Math.round((videoState.maxWatched / videoState.duration) * 100) : 0;
+        
+        window.GALite.track('video_complete', {
+            watched_ms: videoState.totalWatchedMs,
+            percent_watched: percentWatched,
+            max_watched_s: videoState.maxWatched,
+            duration_s: videoState.duration,
+            video_type: videoState.videoType
+        });
+    }
+    
+    /**
+     * Handle page unload - track completion if video was playing
+     */
+    function handlePageUnload() {
+        if (videoState.isStarted && videoState.startTime) {
+            // Add final watch time
+            videoState.totalWatchedMs += Date.now() - videoState.startTime;
+            
+            // Track as incomplete completion
+            const percentWatched = videoState.duration > 0 ? 
+                Math.round((videoState.maxWatched / videoState.duration) * 100) : 0;
+            
+            window.GALite.track('video_complete', {
+                watched_ms: videoState.totalWatchedMs,
+                percent_watched: percentWatched,
+                max_watched_s: videoState.maxWatched,
+                duration_s: videoState.duration,
+                video_type: videoState.videoType,
+                completed_naturally: false
+            });
+        }
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initVideoTracking);
+    } else {
+        initVideoTracking();
+    }
+    
+    // Track completion on page unload
+    window.addEventListener('beforeunload', handlePageUnload);
+    window.addEventListener('pagehide', handlePageUnload);
+    
+    // Expose for debugging (optional)
+    window.VideoTracker = {
+        getState: () => ({ ...videoState }),
+        PROGRESS_SECONDS: PROGRESS_SECONDS
+    };
+    
+})();

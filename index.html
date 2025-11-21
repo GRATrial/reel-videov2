@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Instagram Reels - NYU Video Study</title>
     
-    <!-- GA4 Tracking System -->
-    <script src="js/ga-lite.js"></script>
-    <script src="js/ga-video.js"></script>
+    <!-- MongoDB Tracking System - REEL VIDEO Only -->
+    <script src="js/mongo-tracker-base.js"></script>
+    <script src="js/mongo-reel-video-tracker.js"></script>
 
     <style>
         * {
@@ -499,21 +500,41 @@
             
             // Return to Survey functionality
             const returnSurveyBtn = document.getElementById('return-survey-btn');
-            returnSurveyBtn.addEventListener('click', () => {
-                // Navigate back to the specific Qualtrics survey
-                window.location.href = 'https://gmu.az1.qualtrics.com/jfe/form/SV_eJcxun5CS6HHAVg';
-                // Attempt to close current tab/window after navigation
+            returnSurveyBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const surveyUrl = 'https://gmu.az1.qualtrics.com/jfe/form/SV_eJcxun5CS6HHAVg';
+                
+                // Navigate to survey
+                // If this window was opened as a popup, it may close automatically
+                // Otherwise, it will navigate to the survey
+                window.location.href = surveyUrl;
+                
+                // Try to close the window (works if opened by JavaScript/popup)
+                // Note: Browsers block closing tabs that user opened directly
                 setTimeout(() => {
-                    window.close();
+                    try {
+                        window.close();
+                    } catch (err) {
+                        // window.close() failed - that's okay, navigation will happen
+                    }
                 }, 100);
             });
             
             // Tap to Start functionality
             const tapToStartOverlay = document.getElementById('tap-to-start-overlay');
-            tapToStartOverlay.addEventListener('click', () => {
-                console.log('Tap to start clicked - YouTube tracking enabled');
-                tapToStartOverlay.classList.add('hidden');
-            });
+            if (tapToStartOverlay) {
+                tapToStartOverlay.addEventListener('click', () => {
+                    console.log('Tap to start clicked - YouTube tracking enabled');
+                    tapToStartOverlay.classList.add('hidden');
+                    
+                    // Enable tracking and start video (handled by MongoDB tracker)
+                    if (window.VideoTracker && window.VideoTracker.enableTracking) {
+                        window.VideoTracker.enableTracking();
+                    }
+                });
+            }
             
             // YouTube iframe mute toggle via overlay
             const muteOverlay = document.querySelector('.mute-toggle-overlay');

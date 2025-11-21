@@ -174,3 +174,45 @@
     }
     
 })();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeGA().catch(() => {
+                // Fail silently if GA initialization fails
+            });
+        });
+    } else {
+        initializeGA().catch(() => {
+            // Fail silently if GA initialization fails
+        });
+    }
+    
+})();
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeGA().catch(() => {
+                // Fail silently if GA initialization fails
+            });
+        });
+    } else {
+        initializeGA().catch(() => {
+            // Fail silently if GA initialization fails
+        });
+    }
+    
+})();
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeGA().catch(() => {
+                // Fail silently if GA initialization fails
+            });
+        });
+    } else {
+        initializeGA().catch(() => {
+            // Fail silently if GA initialization fails
+        });
+    }
+    
+})();
+
