@@ -86,12 +86,14 @@
         videoState.duration = event.target.getDuration();
         console.log('MongoReelVideoTracker: Video ready, duration:', videoState.duration, 'seconds');
         
-        // Ensure video is muted initially (for autoplay to work)
+        // Ensure video is unmuted (autoplay is disabled, so no need to mute)
         try {
-            event.target.mute();
-            console.log('MongoReelVideoTracker: Video muted for autoplay');
+            if (event.target.isMuted()) {
+                event.target.unMute();
+                console.log('MongoReelVideoTracker: Video unmuted');
+            }
         } catch (error) {
-            console.error('MongoReelVideoTracker: Error muting video:', error);
+            console.error('MongoReelVideoTracker: Error unmuting video:', error);
         }
         
         // Start milestone tracking
