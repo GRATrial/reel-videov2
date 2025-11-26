@@ -29,7 +29,16 @@
         lastReportedTime: 0,
         milestonesReached: new Set(),
         completionCount: 0,
-        maxProgressReached: 0
+        maxProgressReached: 0,
+        // Enhanced metrics
+        pauseCount: 0,
+        totalPauseTimeSeconds: 0,
+        pauseStartTime: null,
+        unmuted: false,
+        unmutedAtSecond: null,
+        firstInteractionTime: null,
+        pageLoadTime: Date.now(),
+        sessionEndTime: null
     };
     
     // YouTube API ready flag
@@ -111,11 +120,29 @@
         
         // PLAYING (1)
         if (state === YT.PlayerState.PLAYING) {
+            // Track first interaction
+            if (!videoState.firstInteractionTime) {
+                videoState.firstInteractionTime = Date.now();
+            }
+            
+            // Track pause time if we were paused
+            if (videoState.pauseStartTime !== null) {
+                const pauseDuration = (Date.now() - videoState.pauseStartTime) / 1000;
+                videoState.totalPauseTimeSeconds += pauseDuration;
+                videoState.pauseStartTime = null;
+            }
+            
             // Force unmute when video starts playing
             try {
                 if (player.isMuted()) {
                     player.unMute();
                     console.log('MongoReelVideoTracker: Video unmuted on play');
+                }
+                
+                // Track unmute if not already tracked
+                if (!videoState.unmuted) {
+                    videoState.unmuted = true;
+                    videoState.unmutedAtSecond = player.getCurrentTime();
                 }
             } catch (error) {
                 console.error('MongoReelVideoTracker: Error unmuting:', error);
@@ -134,6 +161,15 @@
         
         // PAUSED (2)
         else if (state === YT.PlayerState.PAUSED) {
+            // Track first interaction
+            if (!videoState.firstInteractionTime) {
+                videoState.firstInteractionTime = Date.now();
+            }
+            
+            // Increment pause count
+            videoState.pauseCount++;
+            videoState.pauseStartTime = Date.now();
+            
             if (videoState.currentPlayStartTime !== null) {
                 const currentTime = player.getCurrentTime();
                 const watchedDuration = currentTime - videoState.currentPlayStartTime;
@@ -327,10 +363,21 @@
         }
         
         try {
+            // Track first interaction
+            if (!videoState.firstInteractionTime) {
+                videoState.firstInteractionTime = Date.now();
+            }
+            
             const isMuted = videoState.player.isMuted();
             if (isMuted) {
                 videoState.player.unMute();
                 console.log('MongoReelVideoTracker: Video unmuted');
+                
+                // Track unmute if not already tracked
+                if (!videoState.unmuted) {
+                    videoState.unmuted = true;
+                    videoState.unmutedAtSecond = videoState.player.getCurrentTime();
+                }
             } else {
                 videoState.player.mute();
                 console.log('MongoReelVideoTracker: Video muted');
