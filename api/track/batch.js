@@ -25,6 +25,16 @@ module.exports = async (req, res) => {
     }
 
     try {
+        // Check MongoDB URI
+        if (!process.env.MONGODB_URI) {
+            console.error('❌ MONGODB_URI environment variable is not set!');
+            return res.status(500).json({
+                success: false,
+                error: 'MONGODB_URI environment variable is not configured. Please set it in Vercel project settings.',
+                hint: 'Go to Vercel Dashboard → Project Settings → Environment Variables'
+            });
+        }
+
         const events = req.body.events || [];
 
         if (!Array.isArray(events) || events.length === 0) {
@@ -74,9 +84,21 @@ module.exports = async (req, res) => {
 
     } catch (error) {
         console.error('❌ Error batch tracking events:', error);
+        console.error('❌ Error stack:', error.stack);
+        
+        // Check if it's a MongoDB connection error
+        if (error.message && (error.message.includes('MONGODB_URI') || error.message.includes('connection'))) {
+            return res.status(500).json({
+                success: false,
+                error: 'MongoDB connection error',
+                details: error.message,
+                hint: 'Check MONGODB_URI in Vercel environment variables'
+            });
+        }
+        
         return res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message || 'Internal server error'
         });
     }
 };

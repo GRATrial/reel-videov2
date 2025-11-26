@@ -35,6 +35,16 @@ module.exports = async (req, res) => {
             });
         }
 
+        // Check MongoDB URI
+        if (!process.env.MONGODB_URI) {
+            console.error('❌ MONGODB_URI environment variable is not set!');
+            return res.status(500).json({
+                success: false,
+                error: 'MONGODB_URI environment variable is not configured. Please set it in Vercel project settings.',
+                hint: 'Go to Vercel Dashboard → Project Settings → Environment Variables'
+            });
+        }
+
         // Determine condition from properties or study_type
         const condition = event.properties?.condition || event.study_type || 'unknown';
         
@@ -53,7 +63,19 @@ module.exports = async (req, res) => {
         };
 
         // Insert into condition-specific collection
-        const collection = await getEventsCollection(event.study_type, condition);
+        let collection;
+        try {
+            collection = await getEventsCollection(event.study_type, condition);
+        } catch (dbError) {
+            console.error('❌ MongoDB connection error:', dbError);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to connect to MongoDB',
+                details: dbError.message,
+                hint: 'Check if MONGODB_URI is correct and MongoDB Atlas allows connections from Vercel IPs'
+            });
+        }
+
         const result = await collection.insertOne(eventDocument);
         
         console.log(`✅ Event tracked: ${event.event_name} → ${collection.collectionName} (ID: ${result.insertedId})`);
@@ -68,9 +90,20 @@ module.exports = async (req, res) => {
         console.error('❌ Error tracking event:', error);
         console.error('❌ Event that failed:', JSON.stringify(req.body, null, 2));
         console.error('❌ Error stack:', error.stack);
+        
+        // Check if it's a MongoDB connection error
+        if (error.message && error.message.includes('MONGODB_URI')) {
+            return res.status(500).json({
+                success: false,
+                error: 'MongoDB configuration error',
+                details: error.message,
+                hint: 'Set MONGODB_URI in Vercel environment variables'
+            });
+        }
+        
         return res.status(500).json({
             success: false,
-            error: error.message,
+            error: error.message || 'Internal server error',
             details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
