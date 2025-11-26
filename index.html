@@ -480,6 +480,16 @@
                         });
                     }
                     
+                    // Also log via logEvent for compatibility
+                    if (window.MongoTracker && window.MongoTracker.logEvent) {
+                        window.MongoTracker.logEvent('cta_click', {
+                            buttonId: interactionType,
+                            cta_type: interactionType,
+                            post_type: 'reel_video',
+                            post_id: 'nyu_reel_video_ad'
+                        });
+                    }
+                    
                     // Track CTA click using GA4 system (for compatibility)
                     if (window.GALite && window.GALite.track) {
                         window.GALite.track('cta_click', {
