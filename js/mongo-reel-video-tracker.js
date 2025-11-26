@@ -332,25 +332,68 @@
     }
     
     /**
-     * Track final summary
+     * Track final summary with comprehensive metrics
      */
     function trackVideoSummary() {
+        // Calculate final pause time if still paused
+        if (videoState.pauseStartTime !== null) {
+            const pauseDuration = (Date.now() - videoState.pauseStartTime) / 1000;
+            videoState.totalPauseTimeSeconds += pauseDuration;
+            videoState.pauseStartTime = null;
+        }
+        
+        // Set session end time
+        videoState.sessionEndTime = Date.now();
+        
+        // Calculate metrics
         const completionRate = videoState.duration > 0 ? 
             (videoState.totalWatchTimeSeconds / videoState.duration) * 100 : 0;
         
-        window.MongoTracker.track('reel_video_summary', {
-            total_watch_time_seconds: Math.round(videoState.totalWatchTimeSeconds),
-            total_watch_time_minutes: Math.round((videoState.totalWatchTimeSeconds / 60) * 100) / 100,
+        const totalTimeOnPage = (videoState.sessionEndTime - videoState.pageLoadTime) / 1000;
+        const timeToFirstInteraction = videoState.firstInteractionTime ? 
+            (videoState.firstInteractionTime - videoState.pageLoadTime) / 1000 : null;
+        
+        const videoCompleted = videoState.completionCount > 0 || videoState.maxProgressReached >= videoState.duration * 0.95;
+        const replayed = videoState.playCount > 1;
+        
+        // Prepare comprehensive summary
+        const summary = {
+            // Basic session metrics
+            participant_id: window.MongoTracker.participantId || 'unknown',
+            session_start: videoState.sessionStartTime ? new Date(videoState.sessionStartTime).toISOString() : new Date(videoState.pageLoadTime).toISOString(),
+            session_end: new Date(videoState.sessionEndTime).toISOString(),
+            total_time_on_page: Math.round(totalTimeOnPage),
+            
+            // Video metrics
+            video_completed: videoCompleted ? 'yes' : 'no',
+            watch_duration: Math.round(videoState.totalWatchTimeSeconds),
+            completion_percentage: Math.min(100, Math.round(completionRate)),
+            pause_count: videoState.pauseCount,
+            total_pause_time: Math.round(videoState.totalPauseTimeSeconds),
+            unmuted: videoState.unmuted ? 'yes' : 'no',
+            unmuted_at_second: videoState.unmutedAtSecond !== null ? Math.round(videoState.unmutedAtSecond * 10) / 10 : null,
+            replayed: replayed ? 'yes' : 'no',
+            time_to_first_interaction: timeToFirstInteraction !== null ? Math.round(timeToFirstInteraction * 10) / 10 : null,
+            
+            // Additional tracking data
             video_duration: videoState.duration,
-            completion_rate: Math.min(100, Math.round(completionRate)),
             play_count: videoState.playCount,
             completion_count: videoState.completionCount,
-            milestones_reached: Array.from(videoState.milestonesReached).sort((a,b) => a-b),
             max_progress_reached: Math.round(videoState.maxProgressReached),
+            milestones_reached: Array.from(videoState.milestonesReached).sort((a,b) => a-b),
             condition: 'reel_video'
-        });
+        };
+        
+        // Log comprehensive summary via logEvent
+        if (window.MongoTracker.logEvent) {
+            window.MongoTracker.logEvent('video_summary', summary);
+        }
+        
+        // Also track via old system for compatibility
+        window.MongoTracker.track('reel_video_summary', summary);
         
         console.log('MongoReelVideoTracker: Final summary -', videoState.totalWatchTimeSeconds.toFixed(2), 'seconds');
+        console.log('MongoReelVideoTracker: Comprehensive metrics:', summary);
     }
     
     /**
