@@ -47,59 +47,20 @@
             return window.MongoTracker.participantId;
         }
         
-        // Check URL parameter first
+        // Read pid from URL parameter (from Qualtrics)
         const urlParams = new URLSearchParams(window.location.search);
-        const prolificFromUrl = urlParams.get('PROLIFIC_ID');
+        const pidFromUrl = urlParams.get('pid');
         
-        if (prolificFromUrl) {
-            console.log('MongoTracker: Using PROLIFIC_ID from URL:', prolificFromUrl);
-            window.MongoTracker.participantId = prolificFromUrl;
-            return prolificFromUrl;
+        if (pidFromUrl) {
+            console.log('MongoTracker: Using pid from URL:', pidFromUrl);
+            window.MongoTracker.participantId = pidFromUrl.trim();
+            return window.MongoTracker.participantId;
         }
         
-        // Prevent multiple simultaneous prompts
-        if (window.MongoTracker.isCollectingPid) {
-            console.log('MongoTracker: PID collection already in progress, waiting...');
-            // Wait a bit and check again
-            let attempts = 0;
-            while (attempts < 20 && !window.MongoTracker.participantId) {
-                attempts++;
-                // Synchronous wait (not ideal but prevents multiple prompts)
-                const start = Date.now();
-                while (Date.now() - start < 100) {
-                    // Busy wait
-                }
-            }
-            // If still no ID after waiting, allow prompt
-        }
-        
-        // Clear any stored ID to ensure fresh session
-        try {
-            localStorage.removeItem('mongo_participant_id');
-        } catch (e) {
-            // Fail silently
-        }
-        
-        // Prompt for participant ID
-        console.log('MongoTracker: Prompting for participant ID...');
-        window.MongoTracker.isCollectingPid = true;
-        
-        let prolificId = null;
-        while (!prolificId || prolificId.trim() === '') {
-            prolificId = prompt('⚠️ REQUIRED: Please enter your Participant ID to continue.\n\n(This cannot be skipped - press OK after entering your ID)');
-            
-            if (prolificId === null) {
-                alert('❌ Participant ID is required to participate in this study.\n\nPlease enter your ID when prompted.');
-                continue;
-            }
-            
-            if (prolificId.trim() === '') {
-                alert('❌ Please enter a valid Participant ID.\n\nEmpty entries are not allowed.');
-                continue;
-            }
-            
-            prolificId = prolificId.trim();
-            console.log('MongoTracker: User entered valid PROLIFIC_ID:', prolificId);
+        // If no pid in URL, use "unknown" (shouldn't happen in production)
+        console.warn('MongoTracker: No pid found in URL, using "unknown"');
+        window.MongoTracker.participantId = 'unknown';
+        return 'unknown';
             break;
         }
         
