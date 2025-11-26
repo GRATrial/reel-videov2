@@ -5,7 +5,8 @@
 
 const { MongoClient } = require('mongodb');
 
-const MONGODB_URI = process.env.MONGODB_URI;
+// Use environment variable or fallback to hardcoded URI (for development/testing)
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://estatedeliuser:estatedeli12345@cluster0.xwvmm93.mongodb.net/instagram_study?retryWrites=true&w=majority';
 
 if (!MONGODB_URI) {
     console.error('❌ MONGODB_URI environment variable is not set!');
