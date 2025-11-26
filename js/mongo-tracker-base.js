@@ -119,6 +119,7 @@
         
         // Try immediate send (non-blocking)
         try {
+            console.log('MongoTracker: Sending event to:', API_URL, event);
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
@@ -129,7 +130,7 @@
             
             if (response.ok) {
                 const result = await response.json();
-                console.log('MongoTracker: Event tracked:', eventName, result);
+                console.log('MongoTracker: ✅ Event tracked successfully:', eventName, result);
                 // Remove from queue if successfully sent
                 const index = window.MongoTracker.eventQueue.indexOf(event);
                 if (index > -1) {
@@ -137,11 +138,15 @@
                 }
                 return result;
             } else {
-                console.warn('MongoTracker: Event tracking failed:', response.status);
+                const errorText = await response.text();
+                console.error('MongoTracker: ❌ Event tracking failed:', response.status, errorText);
+                console.error('MongoTracker: Failed event:', event);
                 // Keep in queue for retry
             }
         } catch (error) {
-            console.warn('MongoTracker: Event tracking error (will retry):', error);
+            console.error('MongoTracker: ❌ Event tracking error (will retry):', error);
+            console.error('MongoTracker: Error event:', event);
+            console.error('MongoTracker: API URL:', API_URL);
             // Keep in queue for retry
         }
     }
@@ -245,9 +250,17 @@
         sendEvent(eventName, properties);
     }
     
+    /**
+     * Log event (alias for track, for compatibility)
+     */
+    function logEvent(eventName, properties = {}) {
+        track(eventName, properties);
+    }
+    
     // Expose API
     window.MongoTracker.initialize = initialize;
     window.MongoTracker.track = track;
+    window.MongoTracker.logEvent = logEvent;
     
     // Auto-initialize when DOM is ready
     if (document.readyState === 'loading') {
