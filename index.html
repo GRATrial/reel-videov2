@@ -469,7 +469,18 @@
                 button.addEventListener('click', (e) => {
                     const interactionType = getInteractionType(button);
                     
-                    // Track CTA click using GA4 system
+                    // Track CTA click using MongoDB
+                    if (window.MongoTracker && window.MongoTracker.track) {
+                        window.MongoTracker.track('cta_click', {
+                            cta_type: interactionType,
+                            action: interactionType,
+                            video_id: 'nyu_youtube_ad',
+                            post_type: 'reel_video',
+                            condition: 'reel_video'
+                        });
+                    }
+                    
+                    // Track CTA click using GA4 system (for compatibility)
                     if (window.GALite && window.GALite.track) {
                         window.GALite.track('cta_click', {
                             cta_type: interactionType,
@@ -482,7 +493,18 @@
 
             document.querySelectorAll('.follow-button').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    // Track follow button click
+                    // Track follow button click using MongoDB
+                    if (window.MongoTracker && window.MongoTracker.track) {
+                        window.MongoTracker.track('cta_click', {
+                            cta_type: 'follow',
+                            action: 'follow',
+                            video_id: 'nyu_youtube_ad',
+                            post_type: 'reel_video',
+                            condition: 'reel_video'
+                        });
+                    }
+                    
+                    // Track follow button click using GA4 (for compatibility)
                     if (window.GALite && window.GALite.track) {
                         window.GALite.track('cta_click', {
                             cta_type: 'follow',
