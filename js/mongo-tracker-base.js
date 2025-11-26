@@ -61,14 +61,6 @@
         console.warn('MongoTracker: No pid found in URL, using "unknown"');
         window.MongoTracker.participantId = 'unknown';
         return 'unknown';
-            break;
-        }
-        
-        window.MongoTracker.isCollectingPid = false;
-        window.MongoTracker.participantId = prolificId;
-        
-        // Don't store in localStorage - each session should be independent
-        return prolificId;
     }
     
     /**
