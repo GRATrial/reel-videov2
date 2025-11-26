@@ -66,9 +66,12 @@ module.exports = async (req, res) => {
 
     } catch (error) {
         console.error('❌ Error tracking event:', error);
+        console.error('❌ Event that failed:', JSON.stringify(req.body, null, 2));
+        console.error('❌ Error stack:', error.stack);
         return res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 };

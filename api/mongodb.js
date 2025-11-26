@@ -8,7 +8,9 @@ const { MongoClient } = require('mongodb');
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-    throw new Error('MONGODB_URI environment variable is required');
+    console.error('❌ MONGODB_URI environment variable is not set!');
+    console.error('❌ Please set MONGODB_URI in Vercel environment variables');
+    throw new Error('MONGODB_URI environment variable is required. Please set it in Vercel project settings.');
 }
 const DB_NAME = 'instagram_study';
 
