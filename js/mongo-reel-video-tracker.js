@@ -442,14 +442,25 @@
         // Start video and unmute when tracking is enabled
         if (videoState.player) {
             try {
-                // Unmute first
-                videoState.player.unMute();
+                // Check if player is ready and has the methods
+                if (typeof videoState.player.unMute === 'function') {
+                    videoState.player.unMute();
+                } else {
+                    console.warn('MongoReelVideoTracker: unMute method not available, player may not be ready');
+                }
+                
                 // Then play
-                videoState.player.playVideo();
-                console.log('MongoReelVideoTracker: Video started and unmuted');
+                if (typeof videoState.player.playVideo === 'function') {
+                    videoState.player.playVideo();
+                    console.log('MongoReelVideoTracker: Video started');
+                } else {
+                    console.warn('MongoReelVideoTracker: playVideo method not available');
+                }
             } catch (error) {
                 console.error('MongoReelVideoTracker: Error starting video:', error);
             }
+        } else {
+            console.warn('MongoReelVideoTracker: Player not initialized yet');
         }
     }
     

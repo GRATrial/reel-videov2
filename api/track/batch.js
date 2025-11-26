@@ -25,16 +25,6 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // Check MongoDB URI
-        if (!process.env.MONGODB_URI) {
-            console.error('❌ MONGODB_URI environment variable is not set!');
-            return res.status(500).json({
-                success: false,
-                error: 'MONGODB_URI environment variable is not configured. Please set it in Vercel project settings.',
-                hint: 'Go to Vercel Dashboard → Project Settings → Environment Variables'
-            });
-        }
-
         const events = req.body.events || [];
 
         if (!Array.isArray(events) || events.length === 0) {
