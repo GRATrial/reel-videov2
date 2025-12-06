@@ -108,58 +108,7 @@
             display: none;
         }
         
-        .tap-to-start-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            cursor: pointer;
-            transition: opacity 0.3s ease;
-        }
-
-        .tap-to-start-overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .tap-to-start-icon {
-            width: 80px;
-            height: 80px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 20px;
-            animation: pulse 2s infinite;
-        }
-
-        .tap-to-start-icon svg {
-            width: 40px;
-            height: 40px;
-            fill: white;
-        }
-
-        .tap-to-start-text {
-            font-size: 18px;
-            font-weight: 600;
-            color: white;
-            text-align: center;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
+        /* Tap to Start Overlay - REMOVED (autoplay enabled) */
 
         .reel {
             width: 100%;
@@ -374,16 +323,6 @@
     <div class="mobile-container">
         
         
-        <!-- Tap to Start Overlay -->
-        <div class="tap-to-start-overlay" id="tap-to-start-overlay">
-            <div class="tap-to-start-icon">
-                <svg viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                </svg>
-            </div>
-            <div class="tap-to-start-text">Tap to Start</div>
-        </div>
-        
         <div class="reels-header">
             <div class="reels-title">Reels</div>
         </div>
@@ -395,7 +334,7 @@
                 <iframe 
                     id="adVideo"
                     class="reel-video" 
-                    src="https://www.youtube.com/embed/GFj4m6JDc5s?enablejsapi=1&controls=0&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&fs=0&disablekb=1&loop=1&playlist=GFj4m6JDc5s&mute=0&autoplay=0"
+                    src="https://www.youtube.com/embed/GFj4m6JDc5s?enablejsapi=1&controls=0&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&fs=0&disablekb=1&loop=1&playlist=GFj4m6JDc5s&mute=1&autoplay=1"
                     frameborder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowfullscreen>
@@ -526,19 +465,7 @@
             });
             
             
-            // Tap to Start functionality
-            const tapToStartOverlay = document.getElementById('tap-to-start-overlay');
-            if (tapToStartOverlay) {
-                tapToStartOverlay.addEventListener('click', () => {
-                    console.log('Tap to start clicked - YouTube tracking enabled');
-                    tapToStartOverlay.classList.add('hidden');
-                    
-                    // Enable tracking and start video (handled by MongoDB tracker)
-                    if (window.VideoTracker && window.VideoTracker.enableTracking) {
-                        window.VideoTracker.enableTracking();
-                    }
-                });
-            }
+            // Autoplay enabled - tracking starts automatically
             
             // YouTube iframe mute toggle via overlay
             const muteOverlay = document.querySelector('.mute-toggle-overlay');
@@ -568,13 +495,23 @@
         function getInteractionType(button) {
             const icon = button.querySelector('svg');
             if (icon) {
+                // Check for more button (three dots) - uses circles, not path
+                const circles = icon.querySelectorAll('circle');
+                if (circles.length >= 3) {
+                    // Check if it's the three dots pattern (vertical alignment)
+                    const cyValues = Array.from(circles).map(c => c.getAttribute('cy'));
+                    if (cyValues.includes('5') && cyValues.includes('12') && cyValues.includes('19')) {
+                        return 'more';
+                    }
+                }
+                
+                // Check for other buttons (use path)
                 const path = icon.querySelector('path');
                 if (path) {
                     const d = path.getAttribute('d');
                     if (d.includes('M20.84 4.61')) return 'like';
                     else if (d.includes('M21 15a2')) return 'comment';
                     else if (d.includes('M22 2L11 13')) return 'share';
-                    else if (d.includes('circle cx="12"')) return 'more';
                 }
             }
             return 'unknown';

@@ -95,14 +95,15 @@
         videoState.duration = event.target.getDuration();
         console.log('MongoReelVideoTracker: Video ready, duration:', videoState.duration, 'seconds');
         
-        // Ensure video is unmuted (autoplay is disabled, so no need to mute)
+        // Ensure video is muted initially (for autoplay to work)
         try {
-            if (event.target.isMuted()) {
-                event.target.unMute();
-                console.log('MongoReelVideoTracker: Video unmuted');
-            }
+            event.target.mute();
+            console.log('MongoReelVideoTracker: Video muted for autoplay');
+            // Start playing immediately (autoplay)
+            event.target.playVideo();
+            console.log('MongoReelVideoTracker: Video started (autoplay)');
         } catch (error) {
-            console.error('MongoReelVideoTracker: Error unmuting video:', error);
+            console.error('MongoReelVideoTracker: Error muting/starting video:', error);
         }
         
         // Start milestone tracking
@@ -433,28 +434,22 @@
     }
     
     /**
-     * Enable tracking (called when tap-to-start is clicked)
+     * Enable tracking (autoplay enabled - video starts muted)
      */
     function enableTracking() {
         videoState.isTrackingEnabled = true;
-        console.log('MongoReelVideoTracker: Tracking enabled');
+        console.log('MongoReelVideoTracker: Tracking enabled (autoplay)');
         
-        // Start video and unmute when tracking is enabled
+        // Start video (already muted for autoplay)
         if (videoState.player) {
             try {
-                // Check if player is ready and has the methods
-                if (typeof videoState.player.unMute === 'function') {
-                    videoState.player.unMute();
-                } else {
-                    console.warn('MongoReelVideoTracker: unMute method not available, player may not be ready');
-                }
-                
-                // Then play
-                if (typeof videoState.player.playVideo === 'function') {
+                // Video should already be playing (autoplay), just ensure it's playing
+                const playerState = videoState.player.getPlayerState();
+                if (playerState !== YT.PlayerState.PLAYING) {
                     videoState.player.playVideo();
-                    console.log('MongoReelVideoTracker: Video started');
+                    console.log('MongoReelVideoTracker: Video started (autoplay)');
                 } else {
-                    console.warn('MongoReelVideoTracker: playVideo method not available');
+                    console.log('MongoReelVideoTracker: Video already playing (autoplay)');
                 }
             } catch (error) {
                 console.error('MongoReelVideoTracker: Error starting video:', error);
@@ -465,20 +460,13 @@
     }
     
     /**
-     * Wait for tap-to-start overlay
+     * Enable tracking immediately (autoplay enabled)
      */
     function waitForTapToStart() {
-        const tapOverlay = document.getElementById('tap-to-start-overlay');
-        if (tapOverlay) {
-            tapOverlay.addEventListener('click', () => {
-                enableTracking();
-            });
-        } else {
-            // If no overlay, enable tracking immediately
-            setTimeout(() => {
-                enableTracking();
-            }, 1000);
-        }
+        // Autoplay enabled - start tracking immediately
+        setTimeout(() => {
+            enableTracking();
+        }, 500);
     }
     
     /**
